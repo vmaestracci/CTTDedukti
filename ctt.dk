@@ -1,0 +1,907 @@
+ 
+(; Rappel c'est assert c'est ça ? Pour tester l'inversibilité des faciles ... Enfin sur les constructeurs ... ;)
+(; Faire le  2.9 maintenant qu'on a les univers !!! ;)
+
+
+(; PARLER CONFLUENCE RAPPORT et probleme des faces ;)
+
+(; Probleme des univers ... ;)
+
+
+(;    ---- My 2LTT ---- ;)
+
+
+
+
+Lev : Type.
+lsuc : Lev -> Lev.
+
+
+
+
+(; ------ ------ ------ Internal Theory -- ;)
+
+
+
+T : Lev -> Type.
+def eps : i : Lev -> T i -> Type. 
+
+t : i : Lev -> (T (lsuc i)).
+[i] eps (lsuc i) (t i) --> T i.
+
+lUp :  i : Lev -> a : T i -> T (lsuc i).
+[i, a] eps (lsuc i) (lUp i a) --> eps i a.
+
+(; Type equalities works like that: A : T i. B : T i. Eq (t i) A B ;)
+
+False : i : Lev -> T i.
+def tFalse := (i : Lev => eps i (False i)). 
+elimFalse : i : Lev -> j : Lev -> A : T j -> tFalse i -> eps j A.
+
+True : i : Lev -> T i.
+def tTrue := (i : Lev => eps i (True i)).
+tt : i : Lev -> (tTrue i).
+def elimTrue : i : Lev -> j : Lev -> tau : (tTrue i -> T j) -> eps j (tau (tt i)) -> p  : tTrue i -> eps j (tau p).
+[i, j, tau, e] elimTrue i j tau e (tt i) --> e.
+
+
+Nat : i : Lev -> T i.
+def tNat := (i : Lev => eps i (Nat i)).
+zero : i : Lev -> tNat i.
+S :    i : Lev -> tNat i -> tNat i.
+def recursor : i : Lev -> j : Lev -> tau : (tNat i -> T j)
+        -> eps j (tau (zero i))
+        -> (n : (tNat i) -> eps j (tau n) -> eps j (tau (S i n)))
+        -> (M : tNat i) -> eps j (tau M).
+
+[i, j, tau, Hz, Hs] recursor i j tau Hz Hs (zero i) --> Hz.
+[i, j, tau, Hz, Hs, n] recursor i j tau Hz Hs (S i n) --> Hs n (recursor i j tau Hz Hs n).
+
+
+Pi : i : Lev -> A : T i -> (eps i A -> T i) -> T i.
+def tPi := (i : Lev => A : T i => B : (eps i A -> T i) => eps i (Pi i A B)).
+
+[i, A, B] eps i (Pi i A B) --> x : eps i A -> eps i (B x).
+def ndPi  := i : Lev => A : T i => B : T i => Pi i A (_ => B).
+def tndPi := l : Lev => A : T l => B : T l => (eps l (ndPi l A B)).
+
+
+Sig : i : Lev -> A : T i -> (eps i A -> T i) -> T i.
+def tSig := (i : Lev => A : T i => B : (eps i A -> T i) => eps i (Sig i A B)).
+
+def pair : i : Lev -> A : T i -> B : (eps i A -> T i) -> a : eps i A -> b : eps i (B a) -> tSig i A B.
+def p1 : i : Lev -> A : T i -> B : (eps i A -> T i) ->            tSig i A B -> eps i A.
+def p2 : i : Lev -> A : T i -> B : (eps i A -> T i) -> p : tSig i A B -> eps i (B (p1 i A B p)).
+
+[i, A, B, a, b] p1 i A B (pair i A B a b) --> a.
+[i, A, B, a, b] p2 i A B (pair i A B a b) --> b.
+[i, A, B, e] (pair i A B (p1 i A B e) (p2 i A B e)) --> e.
+
+def ndSig := (i : Lev => A : T i => B : T i => Sig i A (_ => B)).
+def tndSig := (i : Lev => A : T i => B : T i => tSig i A (_ => B)).
+def ndpair := (i : Lev => A : T i => B : T i => a : eps i A => b : eps i B => pair i A (_ => B) a b).
+
+Sum: i : Lev -> T i -> T i -> T i.
+def tSum := (i : Lev => A : T i => B : T i => eps i (Sum i A B)).
+injl : i : Lev -> A : T i -> B : T i -> (eps i A) -> tSum i A B.
+injr : i : Lev -> A : T i -> B : T i -> (eps i B) -> tSum i A B.
+def case : i : Lev -> j : Lev -> A : T i -> B : T i -> tau : (tSum i A B -> T j)
+        -> (a : eps i A -> eps j (tau (injl i A B a)))
+        -> (b : eps i B -> eps j (tau (injr i A B b)))
+        -> e : tSum i A B -> eps j (tau e).
+
+[i, j, A, B, tau, caseA, caseB, e] case i j A B tau caseA caseB (injl i A B e) --> (caseA e).
+[i, j, A, B, tau, caseA, caseB, e] case i j A B tau caseA caseB (injr i A B e) --> (caseB e).
+
+Eq : i : Lev -> A : T i -> eps i A -> eps i A -> T i.
+def tEq := (i : Lev => A : T i => x : eps i A => y : eps i A => eps i (Eq i A x y)).
+refl : i : Lev -> A : T i -> m : eps i A -> tEq i A m m.
+def J : i : Lev -> j : Lev -> A : T i -> x : eps i A -> tau : (y : eps i A -> p : tEq i A x y -> T j)
+        -> H : eps j (tau x (refl i A x))
+        -> y : eps i A -> p : tEq i A x y -> eps j (tau y p).
+[i, j, A, tau, H, M] J i j A M tau H M (refl i A M) --> H.
+
+def TEq  := l : Lev => A : T l => B : T l => Eq (lsuc l) (t l) A B.
+def tTEq := l : Lev => A : T l => B : T l => eps (lsuc l) (TEq l A B).
+
+
+
+(; ------ ------ ------ External Theory -- ;)
+
+
+xT : Lev -> Type.
+def xeps : i : Lev -> xT i -> Type. 
+
+xt : i : Lev -> (xT (lsuc i)).
+[i] xeps (lsuc i) (xt i) --> xT i.
+
+xlUp :  i : Lev -> a : xT i -> xT (lsuc i).
+[i, a] xeps (lsuc i) (xlUp i a) --> xeps i a.
+
+xFalse : i : Lev -> xT i.
+def xtFalse := (i : Lev => xeps i (xFalse i)). 
+xelimFalse : i : Lev -> j : Lev -> A : xT j -> xtFalse i -> xeps j A.
+
+xTrue : i : Lev -> xT i.
+def xtTrue := (i : Lev => xeps i (xTrue i)).
+xtt : i : Lev -> (xtTrue i).
+def xelimTrue : i : Lev -> j : Lev -> tau : (xtTrue i -> xT j) -> xeps j (tau (xtt i)) -> p  : xtTrue i -> xeps j (tau p).
+[i, j, tau, e] xelimTrue i j tau e (xtt i) --> e.
+
+
+xNat : i : Lev -> xT i.
+def xtNat := (i : Lev => xeps i (xNat i)).
+xzero : i : Lev -> xtNat i.
+xS :    i : Lev -> xtNat i -> xtNat i.
+def xrecursor : i : Lev -> j : Lev -> tau : (xtNat i -> xT j)
+        -> xeps j (tau (xzero i))
+        -> (n : (xtNat i) -> xeps j (tau n) -> xeps j (tau (xS i n)))
+        -> (M : xtNat i) -> xeps j (tau M).
+
+[i, j, tau, Hz, Hs] xrecursor i j tau Hz Hs (xzero i) --> Hz.
+[i, j, tau, Hz, Hs, n] xrecursor i j tau Hz Hs (xS i n) --> Hs n (xrecursor i j tau Hz Hs n).
+
+
+xPi : i : Lev -> A : xT i -> (xeps i A -> xT i) -> xT i.
+def xtPi := (i : Lev => A : xT i => B : (xeps i A -> xT i) => xeps i (xPi i A B)).
+
+[i, A, B] xeps i (xPi i A B) --> x : xeps i A -> xeps i (B x).
+def xndPi := (i : Lev => A : xT i => B : xT i => xPi i A (_ => B)).
+def xtndPi := l : Lev => A : xT l => B : xT l => (xeps l (xndPi l A B)).
+
+xSig : i : Lev -> A : xT i -> (xeps i A -> xT i) -> xT i.
+def xtSig := (i : Lev => A : xT i => B : (xeps i A -> xT i) => xeps i (xSig i A B)).
+
+def xpair : i : Lev -> A : xT i -> B : (xeps i A -> xT i) -> a : xeps i A -> b : xeps i (B a) -> xtSig i A B.
+def xp1   : i : Lev -> A : xT i -> B : (xeps i A -> xT i) ->          xtSig i A B -> xeps i A.
+def xp2   : i : Lev -> A : xT i -> B : (xeps i A -> xT i) -> p : xtSig i A B -> xeps i (B (xp1 i A B p)).
+
+[i, A, B, a, b] xp1 i A B (xpair i A B a b) --> a.
+[i, A, B, a, b] xp2 i A B (xpair i A B a b) --> b.
+[i, A, B, e] (xpair i A B (xp1 i A B e) (xp2 i A B e)) --> e.
+
+def xndSig := (i : Lev => A : xT i => B : xT i => xSig i A (_ => B)).
+def xtndSig := (i : Lev => A : xT i => B : xT i => xtSig i A (_ => B)).
+def xndpair := (i : Lev => A : xT i => B : xT i => a : xeps i A => b : xeps i B => xpair i A (_ => B) a b).
+def xndp1 := l : Lev => A : xT l => B : xT l => e : xtndSig l A B => xp1 l A (_ => B) e.
+def xndp2 := l : Lev => A : xT l => B : xT l => e : xtndSig l A B => xp2 l A (_ => B) e.
+
+xSum: i : Lev -> xT i -> xT i -> xT i.
+def xtSum := (i : Lev => A : xT i => B : xT i => xeps i (xSum i A B)).
+xinjl : i : Lev -> A : xT i -> B : xT i -> (xeps i A) -> xtSum i A B.
+xinjr : i : Lev -> A : xT i -> B : xT i -> (xeps i B) -> xtSum i A B.
+def xcase : i : Lev -> j : Lev -> A : xT i -> B : xT i -> tau : (xtSum i A B -> xT j)
+        -> (a : xeps i A -> xeps j (tau (xinjl i A B a)))
+        -> (b : xeps i B -> xeps j (tau (xinjr i A B b)))
+        -> e : xtSum i A B -> xeps j (tau e).
+
+[i, j, A, B, tau, caseA, caseB, e] xcase i j A B tau caseA caseB (xinjl i A B e) --> (caseA e).
+[i, j, A, B, tau, caseA, caseB, e] xcase i j A B tau caseA caseB (xinjr i A B e) --> (caseB e).
+
+xEq : i : Lev -> A : xT i -> xeps i A -> xeps i A -> xT i.
+def xtEq := (i : Lev => A : xT i => x : xeps i A => y : xeps i A => xeps i (xEq i A x y)).
+xrefl : i : Lev -> A : xT i -> m : xeps i A -> xtEq i A m m.
+def xJ : i : Lev -> j : Lev -> A : xT i -> x : xeps i A -> tau : (y : xeps i A -> p : xtEq i A x y -> xT j)
+        -> H : xeps j (tau x (xrefl i A x))
+        -> y : xeps i A -> p : xtEq i A x y -> xeps j (tau y p).
+[i, j, A, tau, H, M] xJ i j A M tau H M (xrefl i A M) --> H.
+
+def xTEq  := l : Lev => A : xT l => B : xT l => xEq (lsuc l) (xt l) A B.
+def xtTEq := l : Lev => A : xT l => B : xT l => xeps (lsuc l) (xTEq l A B).
+def xTrefl := l : Lev => A : xT l => xrefl (lsuc l) (xt l) A.
+
+
+
+def xK : i : Lev -> j : Lev -> A : xT i -> x : xeps i A -> tau : (p : xtEq i A x x -> xT j)
+        -> H : xeps j (tau (xrefl i A x))
+        -> p : xtEq i A x x -> xeps j (tau p).
+
+[i, j, A, tau, H, M] xK i j A M tau H (xrefl i A M) --> H.
+
+def xFunext : i : Lev -> A : xT i -> B : (xeps i A -> xT i) -> f : xtPi i A B -> g : xtPi i A B ->
+                p : (a : (xeps i A) -> xtEq i (B a) (f a) (g a))
+                -> xtEq i (xPi i A B) f g.
+
+
+
+
+(; ------ ------- ------- Coercion ;)
+
+
+
+
+def c  :  i : Lev ->     T i -> xT i.
+def tc := i : Lev => A : T i => xeps i (c i A).
+
+def isoUp :   i : Lev -> A : T i -> eps i A -> tc i A. 
+def isoDown : i : Lev -> A : T i -> tc i A  -> eps i A.
+[i, A, a] isoDown i A (isoUp i A a) --> a.
+[i, A, a] isoUp i A (isoDown i A a) --> a.
+
+(; Used in dependent types to change a A -> B to a c A -> "c B", it's the "c B" part;)
+def clift := i : Lev => A : T i => B : (eps i A -> T i) => (xa => c i (B (isoDown i A xa))).
+
+
+
+
+(; ------ ------- ------- Lemma 2.TrueTrue ;)
+
+
+
+
+
+(;2.2 ---  ;)
+
+def isoTrueUp   :=   i : Lev =>  e : tc i (True i)   => xtt i.
+def isoTrueDown :=   i : Lev =>  e : xtTrue i        => isoUp i (True i) (tt i).
+
+
+(;2.3 --- ;)
+
+def downsig    := i : Lev => A : T i => B : (eps i A -> T i) => e : tc i (Sig i A B) => isoDown i (Sig i A B) e.
+
+def isoSigUp   := i : Lev => A : T i => B : (eps i A -> T i) => e : tc i (Sig i A B) =>
+        xpair i (c i A) (clift i A B)
+                (isoUp i A (p1 i A B (downsig i A B e)))
+                (isoUp i (B (p1 i A B (downsig i A B e))) (p2 i A B (downsig i A B e))).
+
+def isoSigDown := i : Lev => A : T i => B : (eps i A -> T i) => e : xtSig i (c i A) (clift i A B) => isoUp i (Sig i A B)
+        (pair i A B
+                (isoDown i A (xp1 i (c i A) (clift i A B) e))
+                (isoDown i (B (isoDown i A (xp1 i (c i A) (clift i A B) e))) (xp2 i (c i A) (clift i A B) e))).
+
+
+(;2.4 ---  ;)
+
+def downpi    :=  i : Lev => A : T i => B : (eps i A -> T i) => e : tc i (Pi i A B) => isoDown i (Pi i A B) e.
+def isoPiUp   :=  i : Lev => A : T i => B : (eps i A -> T i) => e : tc i (Pi i A B) =>
+        (x : tc i A => (isoUp i (B (isoDown i A x)) ((downpi i A B e) (isoDown i A x)))).
+def isoPiDown :=  i : Lev => A : T i => B : (eps i A -> T i) => e : xtPi i (c i A) (clift i A B) =>
+        isoUp i (Pi i A B) (x : eps i A => isoDown i (B x) (e (isoUp i A x))).
+
+
+(;2.5 ---
+
+      From now one the reciprocal aren't possible.
+
+      For ex, isoSumUp := (A : T => B : T => e : eps (Sum A B) => case A B (_ => xSum (c A) (c B)) (x : eps A => xinjl (c A) (c B) (isoUp A x)) (x : eps B => xinjr (c A) (c B) (isoUp B x)) e).
+      Is impossible : tau must go to -> T, it can't go to an external type, while for the reciprocal we can eliIminate to an c (Sum A B)  --- Since T < xT
+
+;)
+
+def isoSumDown : l : Lev -> A : T l -> B : T l ->     xtSum l (c l A) (c l B) -> tc l (Sum l A B) :=
+                 l : Lev => A : T l => B : T l => e : xtSum l (c l A) (c l B) =>
+xcase l l (c l A) (c l B) (_ => c l (Sum l A B))
+        (x : tc l A => isoUp l (Sum l A B) (injl l A B (isoDown l A x)))
+        (x : tc l B => isoUp l (Sum l A B) (injr l A B (isoDown l B x)))
+        e.
+
+(;2.6 --- ;)
+
+def isoFalseDown : l : Lev -> (xtFalse l) -> tc l (False l) := l : Lev => e : xtFalse l =>  xelimFalse l l (c l (False l)) e.
+
+
+(;2.7 --- ;)
+
+def isoNatDown : l : Lev -> xtNat l -> tc l (Nat l) := l : Lev => e : xtNat l =>
+xrecursor l l (xm => c l (Nat l))
+              (isoUp l (Nat l) (zero l))
+              (_ => xm => isoUp l (Nat l) (S l (isoDown l (Nat l) xm)))
+               e.
+
+
+(;2.8 --- ;)
+
+def isoEqDown : l : Lev -> A : T l -> u : eps l A -> v : eps l A ->     xtEq l (c l A) (isoUp l A u) (isoUp l A v) -> 
+                        tc l (Eq l A u v) :=
+                l : Lev => A : T l => u : eps l A => v : eps l A => p : xtEq l (c l A) (isoUp l A u) (isoUp l A v) =>
+                        xJ l l (c l A) (isoUp l A u)
+                               (y => q => c l (Eq l A u (isoDown l A y)))
+                               (isoUp l (Eq l A u u) (refl l A u))
+                               (isoUp l A v) p.
+
+
+(;2.9 --- ;)
+
+(; ---- TODOOOOOO --- ;)
+
+
+
+
+(; ------ ------- ------- Bonus Axioms ;)
+
+
+(; ----> < Univalence > ;)
+
+
+(; -- Types stating that f has a right inverse, left inverse --  ;)
+def CompoIdTypeR := l : Lev => A : T l => B : T l => f : tndPi l A B => g : tndPi l B A => Eq l (ndPi l B B) (x : eps l B => f (g x)) (x : eps l B => x).
+def CompoIdTypeL := l : Lev => A : T l => B : T l => f : tndPi l A B => h : tndPi l B A => Eq l (ndPi l A A) (x : eps l A => h (f x)) (x : eps l A => x).
+
+(; -- Type stating that f and g are inverses, used in a later section --  ;)
+def AreInverses  := l : Lev => A : T l => B : T l => f : tndPi l A B => g : tndPi l B A => ndSig l (CompoIdTypeL l A B f g) (CompoIdTypeR l A B f g).
+
+(; -- Types stating that f is an equivalence A -> B, so has both a right and left inverse  --  ;)
+def IsEquiv      := l : Lev => A : T l => B : T l => f : tndPi l A B => ndSig l (Sig l (ndPi l B A) (h => CompoIdTypeL l A B f h))
+                                                                                (Sig l (ndPi l B A) (g => CompoIdTypeR l A B f g)).
+
+(; -- Type stating that there is an f that is an equivalence between A & B --  ;)
+def Equiv        := l : Lev => A : T l => B : T l => Sig l (ndPi l A B) (f => IsEquiv l A B f).
+
+(; -- Proof that id°id = id -- ;)
+def refl_id    := l : Lev => A : T l => (refl l (ndPi l A A) (x : eps l A => x)).
+
+(; -- Proof that id has a left and right inverse -- ;)
+def termright := l : Lev => A : T l => pair l (ndPi l A A) (g => CompoIdTypeR l A A (x=>x) g) (x=>x) (refl_id l A).
+def termleft  := l : Lev => A : T l => pair l (ndPi l A A) (h => CompoIdTypeL l A A (x=>x) h) (x=>x) (refl_id l A).
+
+(; -- Proof that id is an equivalence -- ;)
+def IsEquivId := l : Lev => A : T l => ndpair l        
+                                        (Sig l (ndPi l A A) (h => CompoIdTypeL l A A (x=>x) h))
+                                        (Sig l (ndPi l A A) (g => CompoIdTypeR l A A (x=>x) g))
+                                        (termleft  l A)
+                                        (termright l A).
+
+
+
+(; -- The canonical equivalence A -> A, using id  -- ;)
+def EquivId   := l : Lev => A : T l => pair l
+                                        (ndPi l A A)
+                                        (f => IsEquiv l A A f)
+                                        (x => x)
+                                        (IsEquivId l A).
+
+
+(; -- From a path A = B, we can create an A ~ B: by path induction we need to create a A ~ A, which we did -- ;)
+def pathToEquiv := l : Lev => A : T l => B : T l => p : tTEq l A B =>
+J (lsuc l) l (t l) A (C => _ => Equiv l A C) (EquivId l A) B p.
+
+
+
+(; -- Univalence states that pathToEquiv is an equivalence A = B -> A ~ B -- ;)
+
+Univalence     : l : Lev -> A : T l -> B : T l ->
+        eps (lsuc l) (IsEquiv (lsuc l) (TEq l A B)  (lUp l (Equiv l A B))  (pathToEquiv l A B)).
+
+
+WeakUnivalence : l : Lev -> A : T l -> B : T l ->
+        eps (lsuc l) (Equiv (lsuc l) (TEq l A B) (lUp l (Equiv l A B))).
+
+
+
+(; < T1 > ---
+          For all Context, c is injective
+---;)
+
+def T1 : l : Lev -> A : T l -> B : T l -> p : xtTEq l (c l A) (c l B) -> tTEq l A B.
+
+
+(; < T2 > ---
+          Iso from 2.TrueTrue are equality
+
+        -> Est-ce que ça entraine la prop sur app / lam ? Je pense que oui
+---;)
+
+[l] c l True --> xTrue l.
+[l, A, B] c l (Pi l A B) --> xPi l (c l A) (clift l A B). 
+[l, A, B] c l (Sig l A B) --> xSig l (c l A) (clift l A B).
+
+
+(; < T3 > ---
+          If an xT is iso to a T over Gamma then it has an antecedent by c
+---;)
+
+repletion : l : Lev -> A : xT l -> B : T l -> p : xtTEq l A (c l B) -> T l.
+[l, A, B, e] c l (repletion l A B e) --> A.
+
+
+(; < A1 > ---
+          c(A) + c(B) -> c(A +B) by 2.11, Here we define a reciprocal.
+
+        -> TODO: Faire que les réciproques se réeecrivent...
+---;)
+
+def isoSumUp : l : Lev -> A : T l -> B : T l -> tc l (Sum l A B) -> xtSum l (c l A) (c l B).
+def isoFalseUp : l : Lev -> tc l (False l) -> xtFalse l.
+def isoNatUp : l : Lev -> tc l (Nat l) -> xtNat l.
+def isoEqUp : l : Lev -> A : T l -> u : eps l A -> v : eps l A -> tc l (Eq l A u v) -> xtEq l (c l A) (isoUp l A u) (isoUp l A v).
+
+[l, A, B, e] isoSumUp l A B (isoSumDown l A B e) --> e.
+(;[A, B, e] isoSumDown A B (isoSumUp A B e) --> e.;)
+
+[l, e] isoFalseUp l (isoFalseDown l e) --> e.
+(;[e] isoFalseDown (isoFalseUp e) --> e.;)
+
+[l, e] isoNatUp l (isoNatDown l e) --> e.
+(; [e] isoNatDown (isoNatUp e) --> e. ;)
+
+[l, A, u, v, e] isoEqUp l A u v (isoEqDown l A u v e) --> e.
+(; [A, u, v, e] isoEqDown A u v (isoEqUp A u v e) --> e. ;)
+
+
+(; > Inner A1 < ---
+                The reciprocal aren't iso definitionally anymore but up to an xEq, so the property is internal
+---;)
+
+(; -- External versions of the previously defined types --  ;)
+def xCompoIdTypeR := l : Lev => A : xT l => B : xT l => f : xtndPi l A B => g : xtndPi l B A => xEq l (xndPi l B B) (x : xeps l B => f (g x)) (x : xeps l B => x).
+def xCompoIdTypeL := l : Lev => A : xT l => B : xT l => f : xtndPi l A B => h : xtndPi l B A => xEq l (xndPi l A A) (x : xeps l A => h (f x)) (x : xeps l A => x).
+
+def xAreInverses := l : Lev => A : xT l => B : xT l => f : xtndPi l A B => g : xtndPi l B A => xndSig l 
+        (xCompoIdTypeL l A B f g)
+        (xCompoIdTypeR l A B f g).
+
+
+def isIsoSum : l : Lev -> A : T l -> B : T l -> xeps l (xAreInverses l 
+        (c l (Sum l A B))
+        (xSum l (c l A) (c l B))
+        (isoSumUp   l A B)
+        (isoSumDown l A B)).
+def isIsoFalse : l : Lev -> xeps l (xAreInverses l (c l (False l)) (xFalse l) (isoFalseUp l) (isoFalseDown l)).
+def isIsoN :  l : Lev -> xeps l (xAreInverses l (c l (Nat l)) (xNat l) (isoNatUp l) (isoNatDown l)).
+def isIsoEq : l : Lev -> A : T l -> u : eps l A -> v : eps l A -> xeps l (xAreInverses l 
+        (c l (Eq l A u v)) 
+        (xEq l (c l A) (isoUp l A u) (isoUp l A v)) 
+        (isoEqUp   l A u v)
+        (isoEqDown l A u v)).
+
+(; A2 : I couldn't understand ;)
+(; A3 : Same ... ;)
+(; A4 : Same ...;)
+(; A5 : We suppose it is impossible. Or at least if it was possible it would trivialize our work.;)
+(; A6 : Not a real axiom, it's every possible bonus axiom : HIT, etc... ;)
+
+
+
+(; ------ ------ ------ < Cubical Type Theory >
+
+        Based on the CCHM.
+;)
+
+cL : Lev.
+def cT := xT cL.
+def ceps := xeps cL.
+
+I : cT.
+0 : ceps I.
+1 : ceps I.
+
+(; These two operators are commutative and associative. ;)
+(;TODO: Add commu externe & assoc par reecriture ;)
+
+def Imin : ceps I -> ceps I -> ceps I.
+
+[a] Imin a 0 --> 0.
+[a] Imin 0 a --> 0.
+[a] Imin a 1 --> a.
+[a] Imin 1 a --> a.
+
+
+def Imax : ceps I -> ceps I -> ceps I.
+
+[a] Imax a 0 --> a.
+[a] Imax 0 a --> a.
+[a] Imax a 1 --> 1.
+[a] Imax 1 a --> 1.
+
+def sym : ceps I -> ceps I.
+
+[]     sym 0 --> 1.
+[]     sym 1 --> 0.
+[a, b] sym (Imax a b) --> Imin (sym a) (sym b).
+[a, b] sym (Imin a b) --> Imax (sym a) (sym b).
+
+
+def Path :   A : cT -> u : ceps A -> v : ceps A -> cT.
+
+
+def lam : A : cT -> p : (ceps I -> ceps A) -> ceps (Path A (p 0) (p 1)).
+def app : A : cT -> u : ceps A -> v : ceps A -> ceps (Path A u v) -> ceps I -> ceps A.
+
+
+[A, p, u, v, i]      app A u v (lam A p) i --> (p i).
+[A, p, u, v]         app A u v p 0 --> u.
+[A, p, u, v]         app A u v p 1 --> v.
+
+
+(; Is this equivalent to what's above ? Probably not, aEg is new, but the others are less powerful version of the above ;)
+def a0 :  A : cT -> u  : ceps A -> v  : ceps A -> p : ceps (Path A u v)   -> xtEq cL A (app A u v p 0) u.
+def a1 :  A : cT -> u  : ceps A -> v  : ceps A -> p : ceps (Path A u v)   -> xtEq cL A (app A u v p 1) v.
+def aEg : A : cT -> e1 : ceps A -> e2 : ceps A -> u : ceps (Path A e1 e2)   -> v : ceps (Path A e1 e2)
+-> p : (i : ceps I -> xtEq cL A (app A e1 e2 u i) (app A e1 e2 v i))
+-> xtEq cL (Path A e1 e2) u v.
+
+
+(; --- FunExt of path types --- ;)
+
+
+(; This has the expected type but only up to to eta-reduction ;)
+def pathfunext : A : cT -> B : (ceps A -> cT) -> f : xtPi cL A B -> g : xtPi cL A B -> 
+  p : (x : ceps A -> ceps (Path (B x) (f x) (g x))) ->
+  ceps (Path (xPi cL A B) (x => f x) (x => g x))
+
+        := A : cT => B : (ceps A -> cT) => f : xtPi cL A B => g : xtPi cL A B 
+                => p : (x : ceps A -> ceps (Path (B x) (f x) (g x))) =>
+                lam (xPi cL A B) (i : ceps I => x : ceps A => app (B x) (f x) (g x) (p x) i).
+
+
+(; TODO : A verifier ???? ;)
+
+
+(; --- Composition of paths --- ;)
+
+F : cT.
+0f : ceps F.
+1f : ceps F.
+def eq0 : ceps I -> ceps F.
+def eq1 : ceps I -> ceps F.
+
+(; Rem: un jour on pourra peut etre ajouter assoc et commu en règle par le sys de dedukti pour (car sinon commu ne termine pas) ;)
+
+def Fmin: ceps F -> ceps F -> ceps F.
+
+[a] Fmin a 0 --> 0.
+[a] Fmin 0 a --> 0.
+[a] Fmin a 1 --> a.
+[a] Fmin 1 a --> a.
+
+def Fmax: ceps F -> ceps F -> ceps F.
+
+[a] Fmax a 0 --> a.
+[a] Fmax 0 a --> a.
+[a] Fmax a 1 --> 1.
+[a] Fmax 1 a --> 1.
+
+
+[i] eq1 (sym i) --> (eq0 i).
+[a, b] eq1 (Imax a b) --> Fmax (eq1 a) (eq1 b).
+[a, b] eq1 (Imin a b) --> Fmin (eq1 a) (eq1 b).
+
+[i] eq0 (sym i) --> (eq1 i).
+[a, b] eq0 (Imax a b) --> Fmax (eq0 a) (eq0 b).
+[a, b] eq0 (Imin a b) --> Fmin (eq0 a) (eq0 b).
+
+[a] Fmin (eq1 a) (eq0 a) --> 0f.
+[a] Fmin (eq0 a) (eq1 a) --> 0f.
+
+(; The lattice morphism ;)
+def Feq0 : ceps I -> ceps F -> ceps F.
+
+[r, a, b] Feq0 r (Fmax a b) --> Fmax (Feq0 r a) (Feq0 r b).
+[r, a, b] Feq0 r (Fmin a b) --> Fmin (Feq0 r a) (Feq0 r b).
+[r, a] Feq0 r (eq0 a) --> (eq0 r).
+[r, a] Feq0 r (eq1 a) --> (eq1 r).
+
+(; On verifie a la main que c'est bien confluent, ouf ! ;)
+
+def faceDataType :   ceps F -> cT.
+(; On y crée des isos pour en extraire des informations ;)
+(; On popurrait dire plus fort, que les types sont egaux mais - prudent ;)
+
+(; [] faceDataType 1f --> tt Pas de sens mais est-ce qu'on a un truc un peu de ce niveau la  ???  Et le truc du dessous en reec... TODO TOASK;)
+emptyFace : ceps (faceDataType 0f) -> xtFalse cL. 
+
+def IEq := a : ceps I => b : ceps I => xtEq cL I a b.
+
+
+def faceDataTypeEq1Up :   a : ceps I -> ceps (faceDataType (eq1 a)) -> IEq 1 a.
+def faceDataTypeEq1Down : a : ceps I -> IEq 1 a -> ceps (faceDataType (eq1 a)).
+[a, b] faceDataTypeEq1Up   a (faceDataTypeEq1Down a b) --> b.
+[a, b] faceDataTypeEq1Down a (faceDataTypeEq1Up   a b) --> b.
+
+def faceDataTypeEq0Up :   a : ceps I -> ceps (faceDataType (eq0 a)) -> IEq 0 a.
+def faceDataTypeEq0Down : a : ceps I -> IEq 0 a -> ceps (faceDataType (eq0 a)).
+[a, b] faceDataTypeEq0Up   a (faceDataTypeEq0Down a b) --> b.
+[a, b] faceDataTypeEq0Down a (faceDataTypeEq0Up   a b) --> b.
+  
+
+def faceDataTypeFminUp :   a : ceps F -> b : ceps F -> ceps (faceDataType (Fmin a b)) -> xtndSig cL (faceDataType a) (faceDataType b).
+def faceDataTypeFminDown : a : ceps F -> b : ceps F -> xtndSig cL (faceDataType a) (faceDataType b) -> ceps (faceDataType (Fmin a b)).
+[a, b, e] faceDataTypeFminUp a b (faceDataTypeFminDown a b e) --> e.
+[a, b, e] faceDataTypeFminDown a b (faceDataTypeFminUp a b e) --> e.
+
+
+
+(;
+            def faceDataType : xeps F -> xT.
+            [a] faceDataType(eq1 a) --> xEq I 1 a.
+            [a] faceDataType (eq0 a) --> xEq I 0 a.
+            [a, b] faceDataType (Fmax a b) --> xSum (faceDataType a) (faceDataType b).
+            [a, b] faceDataType (Fmin a b) --> xndSig  (faceDataType a) (faceDataType b).
+
+N'est pas confluent, il va falloir ruser !
+        - xEq ne passe pas
+        - L'assoc ne passe pas
+
+
+def typeUnderFace : xeps F -> A : T -> Type
+def xtypeUnderFace : xeps F -> A : xT -> Type.
+
+def return : (phi : xeps F -> A : T -> eps A -> typeUnderFace phi A).
+def bLev : (phi :  xeps F -> A : T -> B : T -> typeUnderFace phi A -> f : (eps A ->   typeUnderFace phi B) -> typeUnderFace phi B).
+def map : (phi : xeps F -> A : T -> B : T -> f : (eps A -> eps B) -> typeUnderFace phi A -> typeUnderFace phi B).
+
+
+ 
+def interl  : (phi : xeps F -> psi : xeps F -> A : T -> e1 : typeUnderFace phi A -> typeUnderFace (Fmin phi psi) A). 
+def interr  : (phi : xeps F -> psi : xeps F -> A : xT -> e1 : typeUnderFace psi A -> typeUnderFace (Fmin phi psi) A). 
+def union : (phi : xeps F -> psi : xeps F -> A : xT -> e1 : eps (typeUnderFace phi A) -> e2 : eps (typeUnderFace psi A) -> xtypeUnderFace (Fmin phi psi) xT (SSSSSSSS Xeq A e1 e2 SSSSSS) -> typeUnderFace (Fmax phi psi) A).
+
+
+;)
+
+(; 
+
+        Pb : ????
+        Solution : definir cT comme c cubT, cubT
+
+;)
+
+def CubicalEq  := l : Lev => A : T l => a : eps l A => b : eps l A => xEq l (c l A) (isoUp l A a) (isoUp l A b).
+def tCubicalEq := l : Lev => A : T l => a : eps l A => b : eps l A => xeps l (CubicalEq l A a b).
+
+
+def primCompTerm : l : Lev -> phi : ceps F -> A : (ceps I -> T l) -> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i))
+        -> a0 : eps l (A 0) ->                 (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0))
+        -> eps l (A 1).
+
+def primCompEq : l : Lev -> phi : ceps F -> A : (ceps I -> T l) -> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i))
+        -> a0 : eps l (A 0) -> initeq : (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0))
+        -> e : ceps (faceDataType phi) -> tCubicalEq l (A 1) (primCompTerm l phi A u a0 initeq) (u e 1).
+
+
+def Fmaxintro1 : f1 : ceps F -> f2 : ceps F -> ceps (faceDataType f1) -> ceps (faceDataType (Fmax f1 f2)).
+def Fmaxintro2 : f1 : ceps F -> f2 : ceps F -> ceps (faceDataType f2) -> ceps (faceDataType (Fmax f1 f2)).
+
+def fp1 := f1 : ceps F => f2 : ceps F => e => xndp1 cL (faceDataType f1) (faceDataType f2) (faceDataTypeFminUp f1 f2 e).
+def fp2 := f1 : ceps F => f2 : ceps F => e => xndp2 cL (faceDataType f1) (faceDataType f2) (faceDataTypeFminUp f1 f2 e).
+
+(; Exprime Intro1 fp1 == Intro2 fp2 donc le type est propositionnel  ;)
+
+[f1, f2, e] Fmaxintro2 f1 f2 (xp2 cL (faceDataType f1) (_ => faceDataType f2) (faceDataTypeFminUp f1 f2 e))
+-->                Fmaxintro1 f1 f2 (xp1 cL (faceDataType f1) (_ => faceDataType f2) (faceDataTypeFminUp f1 f2 e)).
+
+
+(; ------ ------- Systems ------ ------ ;)
+
+
+def TermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> tau : (ceps (faceDataType (Fmax f1 f2)) -> T l) ->
+                 A1 :  (p : ceps (faceDataType f1) -> eps l (tau (Fmaxintro1 f1 f2 p))) ->
+                A2 :  (p : ceps (faceDataType f2) -> eps l (tau (Fmaxintro2 f1 f2 p))) ->
+                coh : (e : ceps (faceDataType (Fmin f1 f2)) -> 
+                                tCubicalEq l (tau (Fmaxintro1 f1 f2 (fp1 f1 f2 e)))
+                                        (A1 (fp1 f1 f2 e))
+                                        (A2 (fp2 f1 f2 e))) ->
+                e : ceps (faceDataType (Fmax f1 f2)) 
+-> eps l (tau e).
+
+[l, f1, f2, tau, A1, A2, coh, fdata1] TermSys l f1 f2 tau A1 A2 coh (Fmaxintro1 f1 f2 fdata1) --> A1 fdata1.
+[l, f1, f2, tau, A1, A2, coh, fdata2] TermSys l f1 f2 tau A1 A2 coh (Fmaxintro2 f1 f2 fdata2) --> A2 fdata2.
+
+
+(; TODO: Relou ... Faire un systeme ternaire pour les systeme a 3 branche  ;)
+
+def F3max := (f1 => f2 => f3 => Fmax (Fmax f1 f2) f3). 
+
+def F3maxc1 := f1 => f2 => f3 => p : ceps (faceDataType f1) => Fmaxintro1 (Fmax f1 f2) f3 (Fmaxintro1 f1 f2 p).
+def F3maxc2 := f1 => f2 => f3 => p : ceps (faceDataType f2) => Fmaxintro1 (Fmax f1 f2) f3 (Fmaxintro2 f1 f2 p).
+def F3maxc3 := f1 => f2 => f3 => p : ceps (faceDataType f3) => Fmaxintro2 (Fmax f1 f2) f3 p.
+
+
+(;
+
+
+
+
+
+
+def TriTermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> f3 : ceps F -> tau : (ceps (faceDataType (F3max f1 f2 f3)) -> T l) ->
+                 A1 :  (p : ceps (faceDataType f1) -> eps l (tau (F3maxc1 f1 f2 f3 p))) ->
+                 A2 :  (p : ceps (faceDataType f2) -> eps l (tau (F3maxc2 f1 f2 f3 p))) ->
+		 A3 :  (p : ceps (faceDataType f3) -> eps l (tau (F3maxc3 f1 f2 f3 p))) ->
+                 coh12 :(e : ceps (faceDataType (F3min f1 f2 f3)) -> 
+                 	tCubicalEq l (tau (F3maxc1 f1 f2 f3 (f3p1 f1 f2 f2 e)))
+                        (A1 (fp1 f1 f2 e))
+                        (A2 (fp2 f1 f2 e))) ->
+		 coh23 :(e : ceps (faceDataType (F3min f1 f2 f3)) -> 
+                 	tCubicalEq l (tau (F3maxc1 f1 f2 f3 (f3p1 f1 f2 f3 e)))
+                        (A2 (fp1 f2 f3 e))
+                        (A3 (fp2 f2 f3 e))) ->
+		 e : ceps (faceDataType (F3max f1 f2 f3)) 
+		-> eps l (tau e).
+
+
+
+
+def TriTermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> f3 : ceps F -> tau : (ceps (faceDataType (F3max f1 f2 f3)) -> T l) ->
+                 A1 :  (p : ceps (faceDataType f1) -> eps l (tau (F3maxc1 f1 f2 f3 p))) ->
+                 A2 :  (p : ceps (faceDataType f2) -> eps l (tau (F3maxc2 f1 f2 f3 p))) ->
+		 A3 :  (p : ceps (faceDataType f3) -> eps l (tau (F3maxc3 f1 f2 f3 p))) ->
+                 coh12 :(e : ceps (faceDataType (Fmin f1 f2)) -> 
+                 	tCubicalEq l (tau (F3maxc1 f1 f2 f3 (fp1 f1 f2 e)))
+                        (A1 (fp1 f1 f2 e))
+                        (A2 (fp2 f1 f2 e))) ->
+		 coh23 :(e : ceps (faceDataType (Fmin f2 f3)) -> 
+                 	tCubicalEq l (tau (F3maxc1 f1 f2 f3 (fp1 f2 f3 e)))
+                        (A2 (fp1 f2 f3 e))
+                        (A3 (fp2 f2 f3 e))) ->
+		 coh13 :(e : ceps (faceDataType (Fmin f1 f3)) -> 
+                 	tCubicalEq l (tau (F3maxc1 f1 f2 f3 (fp1 f1 f3 e)))
+                        (A1 (fp1 f1 f3 e))
+                        (A3 (fp2 f1 f3 e))) ->
+		 e : ceps (faceDataType (F3max f1 f2 f3)) 
+		-> eps l (tau e).
+;)
+
+
+def xTermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> tau : (ceps (faceDataType (Fmax f1 f2)) -> xT l) ->
+                 A1 :  (p : ceps (faceDataType f1) -> xeps l (tau (Fmaxintro1 f1 f2 p))) ->
+                A2 :  (p : ceps (faceDataType f2) -> xeps l (tau (Fmaxintro2 f1 f2 p))) ->
+                coh : (e : ceps (faceDataType (Fmin f1 f2)) -> 
+                                xtEq l (tau (Fmaxintro1 f1 f2 (fp1 f1 f2 e)))
+                                        (A1 (fp1 f1 f2 e))
+                                        (A2 (fp2 f1 f2 e))) ->
+                e : ceps (faceDataType (Fmax f1 f2)) 
+-> xeps l (tau e).
+
+[l, f1, f2, tau, A1, A2, coh, fdata1] xTermSys l f1 f2 tau A1 A2 coh (Fmaxintro1 f1 f2 fdata1) --> A1 fdata1.
+[l, f1, f2, tau, A1, A2, coh, fdata2] xTermSys l f1 f2 tau A1 A2 coh (Fmaxintro2 f1 f2 fdata2) --> A2 fdata2.
+
+
+
+
+(; ------ ------ Utility ------ ------- ;)
+
+
+def cubRewr : l : Lev -> A : cT -> x : ceps A -> tau : (y : ceps A -> p : xtEq cL A x y -> T l) -> H : eps l (tau x (xrefl cL A x))
+                                -> y : ceps A -> p : xtEq cL A x y -> 
+                                eps l (tau y p)
+
+:=               l : Lev => A : cT => x : ceps A => tau : (y : ceps A -> p : xtEq cL A x y -> T l) => H : eps l (tau x (xrefl cL A x))
+                                => y : ceps A => p : xtEq cL A x y => 
+isoDown l (tau y p) (xJ cL l A x (y => q => c l (tau y q)) (isoUp l (tau x (xrefl cL A x)) H) y p). 
+
+
+
+
+def xsymmetry : l : Lev -> A : xT l -> u : xeps l A -> v : xeps l A -> p : xtEq l A u v -> xtEq l A v u
+:= l : Lev => A : xT l => u : xeps l A => v : xeps l A => p : xtEq l A u v => 
+        xJ l l A u (v => _ => xEq l A v u) (xrefl l A u) v p.
+
+def xcomposition : l : Lev -> A : xT l -> u : xeps l A -> v : xeps l A -> w : xeps l A ->
+        p1 : xtEq l A u v -> p2 : xtEq l A v w ->
+        xtEq l A u w
+:= l : Lev => A : xT l => u : xeps l A => v : xeps l A => w : xeps l A => p1 : xtEq l A u v => p2 : xtEq l A v w =>
+        xJ l l A v (y => _ => xEq l A u y) p1 w p2.
+
+
+
+
+
+(; --- --- --- ---    Rules of primComp --- ;)
+
+(; --- For Nat ;)
+
+
+(; TODO: Admis, mais prouvable ... ;)
+def extractNat : l : Lev -> n : tNat l -> m : tNat l -> tCubicalEq l (Nat l) (S l n) (S l m) -> tCubicalEq l (Nat l) n m.
+
+[l, phi, coh]        primCompTerm l phi (_ => Nat l) (_ => _ => zero l) (zero l) coh -->
+        (zero l).
+[l, phi, coh, n, n0] primCompTerm l phi (_ => Nat l) (_ => _ => S l n)  (S l n0) coh -->
+        primCompTerm l phi (_ => Nat l) (_ => _ => n) n0 (e => extractNat l n0 n (coh e)).
+
+
+(; --- For Paths ;)
+
+(;
+[l, phi, coh, A, u, v, p, p0] primCompTerm cL phi (i => Path (A i) (u i) (v i)) p p0 coh --> .
+;)
+
+
+
+def fill
+:= l : Lev => phi : ceps F => A : (i : ceps I -> T l)
+=> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i)) => a0 : eps l (A 0) =>
+proof : (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) => i : ceps I =>
+primCompTerm l (Fmax  phi (eq0 i)) (j : ceps I => A (Imin i j))
+        (onunion : ceps (faceDataType (Fmax  phi (eq0 i))) => j : ceps I => 
+                TermSys l phi (eq0 i) (_ => A (Imin i j))
+                        (p : ceps (faceDataType phi)      => u p (Imin i j))
+                        (p : ceps (faceDataType (eq0 i))  => cubRewr l I 0 (k => _ => A (Imin k j)) a0 i (faceDataTypeEq0Up i p))
+                        (e => xJ cL l I 0 
+                                (k => q => CubicalEq l (A (Imin k j)) (u (fp1 phi (eq0 i) e) (Imin k j)) (cubRewr l I 0 (m => _ => A (Imin m j)) a0 k q))
+                                (xsymmetry l (A 0) a0 (u e 0) (proof (fp1 phi (eq0 i) e)))
+				i (faceDataTypeEq0Up i (fp2 phi (eq0 i) e)))
+                         onunion).
+
+
+
+(;
+
+tCubicalEq l (A (Imin 0 j)) (u (fp1 phi (eq0 i) e) (Imin 0 j)) (cubRewr l I 0 (m => _ => A (Imin m j)) a0 0 refl)
+tCubicalEq l (A 0) (u (fp1 phi (eq0 i) e) 0) a0
+
+
+
+CubicalEq l (A (Imin i j)) (u (fp1 phi (eq0 i) e) (Imin i j)) (cubRewr l I 0 (m => _ => A (Imin m j)) a0 i (faceDataTypeEq0Up i (fp2 phi (eq0 i) e)))
+
+
+
+def xJ : i : Lev -> j : Lev -> A : xT i -> x : xeps i A -> tau : (y : xeps i A -> p : xtEq i A x y -> xT j)
+        -> H : xeps j (tau x (xrefl i A x))
+        -> y : xeps i A -> p : xtEq i A x y -> xeps j (tau y p).
+
+
+def TermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> tau : (ceps (faceDataType (Fmax f1 f2)) -> T l) ->
+                 A1 :  (p : ceps (faceDataType f1) -> eps l (tau (Fmaxintro1 f1 f2 p))) ->
+                A2 :  (p : ceps (faceDataType f2) -> eps l (tau (Fmaxintro2 f1 f2 p))) ->
+                coh : (e : ceps (faceDataType (Fmin f1 f2)) -> 
+                                tCubicalEq l (tau (Fmaxintro1 f1 f2 (fp1 f1 f2 e)))
+                                        (A1 (fp1 f1 f2 e))
+                                        (A2 (fp2 f1 f2 e))) ->
+                e : ceps (faceDataType (Fmax f1 f2)) 
+-> eps l (tau e).
+
+
+def primCompTerm : l : Lev -> phi : ceps F -> A : (ceps I -> T l) -> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i))
+        -> a0 : eps l (A 0) ->                 (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0))
+        -> eps l (A 1).
+
+
+def fill
+:= l : Lev => phi : ceps F => A : (i : ceps I -> T l)
+=> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i)) => a0 : eps l (A 0) =>
+proof : (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) => i : ceps I =>
+primCompTerm l (Fmax  phi (eq0 i)) (j : ceps I => A (Imin i j))
+        (onunion : ceps (faceDataType (Fmax  phi (eq0 i))) => j : ceps I => 
+                TermSys l phi (eq0 i) (_ => A (Imin i j))
+                        (p : ceps (faceDataType phi)      => u p (Imin i j))
+                        (p : ceps (faceDataType (eq0 i))  => cubRewr l I 0 (k => _ => A (Imin k j)) a0 i (faceDataTypeEq0Up i p))
+                        (e => xJ cL l I 0 
+                                (k => q => CubicalEq l (A (Imin k j)) (u (fp1 phi (eq0 i) e) (Imin k j)) (cubRewr l I 0 (m => _ => A (Imin m j)) a0 k q))
+                                (xsymmetry l (A 0) a0 (u e 0) (proof (fp1 phi (eq0 i) e)))
+				i (faceDataTypeEq0Up i (fp2 phi (eq0 i) e)))
+                         onunion).
+(cubical eq changed)
+
+
+def fill
+:= l : Lev => phi : ceps F => A : (i : ceps I -> T l)
+=> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i)) => a0 : eps l (A 0) =>
+proof : (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) => i : ceps I =>
+primCompTerm l (Fmax  phi (eq0 i)) (j : ceps I => A (Imin i j))
+        (onunion : ceps (faceDataType (Fmax  phi (eq0 i))) => j : ceps I => 
+                TermSys l phi (eq0 i) (_ => A (Imin i j))
+                        (p : ceps (faceDataType phi)      => u p (Imin i j))
+                        (p : ceps (faceDataType (eq0 i))  => cubRewr l I 0 (k => _ => A (Imin k j)) a0 i (faceDataTypeEq0Up i p))
+                        (e => xJ cL l I 0 
+                                (k => q => tCubicalEq l (A (Imin k j)) (u (fp1 phi (eq0 i) e) (Imin k j)) (cubRewr l I 0 (m => _ => A (Imin m j)) a0 k q))
+                                (xsymmetry l (A 0) a0 (u e 0) (proof (fp1 phi (eq0 i) e)))
+				i (faceDataTypeEq0Up i (fp2 phi (eq0 i) e)))
+                         onunion).
+
+
+
+;)
+
+(;
+l : Lev -> phi : ceps F -> A : (i : ceps I -> T l) -> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i))
+-> a0 : eps l (A 0) -> i : ceps I -> z -> coh -> eps l (A i)
+;)
+
+
+
+
+
+(; FAIRE 4.5, puis faire 4.5 natural avec fill ;)
+
+
+
+
+
+(; ---- Filling of faces ---- ;)
+
+
+
+    (; -----------> Done ! ! !  Thank you for reading this far ! =) <------------ ;)
