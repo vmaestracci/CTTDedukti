@@ -198,6 +198,12 @@ def xK : i : Lev -> j : Lev -> A : xT i -> x : xeps i A -> tau : (p : xtEq i A x
 
 [i, j, A, tau, H, M] xK i j A M tau H (xrefl i A M) --> H.
 
+(; TODO: prove it ;)
+def xUIP : l : Lev -> A : xT l -> x : xeps l A -> y : xeps l A -> p : xtEq l A x y -> p' : xtEq l A x y ->
+        xtEq l (xEq l A x y) p p'.
+
+[i, j, A, tau, H, M] xK i j A M tau H (xrefl i A M) --> H.
+
 def xFunext : i : Lev -> A : xT i -> B : (xeps i A -> xT i) -> f : xtPi i A B -> g : xtPi i A B ->
                 p : (a : (xeps i A) -> xtEq i (B a) (f a) (g a))
                 -> xtEq i (xPi i A B) f g.
@@ -630,15 +636,52 @@ def union : (phi : xeps F -> psi : xeps F -> A : xT -> e1 : eps (typeUnderFace p
 
 ;)
 
-(; 
 
-        Pb : ????
-        Solution : definir cT comme c cubT, cubT
+(; ------ ------ Utility : Cubical Eq ------ ------- ;)
 
-;)
+
+
+(; -- xLemmas --;)
+
+
+
+def xsymmetry : l : Lev -> A : xT l -> u : xeps l A -> v : xeps l A -> p : xtEq l A u v -> xtEq l A v u
+:= l : Lev => A : xT l => u : xeps l A => v : xeps l A => p : xtEq l A u v => 
+        xJ l l A u (v => _ => xEq l A v u) (xrefl l A u) v p.
+
+def xcomposition : l : Lev -> A : xT l -> u : xeps l A -> v : xeps l A -> w : xeps l A ->
+        p1 : xtEq l A u v -> p2 : xtEq l A v w ->
+        xtEq l A u w
+:= l : Lev => A : xT l => u : xeps l A => v : xeps l A => w : xeps l A => p1 : xtEq l A u v => p2 : xtEq l A v w =>
+        xJ l l A v (y => _ => xEq l A u y) p1 w p2.
+
+
+
+(; -- CubLemmas -- ;)
+
+
 
 def CubicalEq  := l : Lev => A : T l => a : eps l A => b : eps l A => xEq l (c l A) (isoUp l A a) (isoUp l A b).
 def tCubicalEq := l : Lev => A : T l => a : eps l A => b : eps l A => xeps l (CubicalEq l A a b).
+def cubrefl := l : Lev => A : T l => a : eps l A => xrefl l (c l A) (isoUp l A a).
+
+
+def cubRewr : l : Lev -> A : cT -> x : ceps A -> tau : (y : ceps A -> p : xtEq cL A x y -> T l) -> H : eps l (tau x (xrefl cL A x))
+                                -> y : ceps A -> p : xtEq cL A x y -> 
+                                eps l (tau y p)
+
+:=               l : Lev => A : cT => x : ceps A => tau : (y : ceps A -> p : xtEq cL A x y -> T l) => H : eps l (tau x (xrefl cL A x))
+                                => y : ceps A => p : xtEq cL A x y => 
+isoDown l (tau y p) (xJ cL l A x (y => q => c l (tau y q)) (isoUp l (tau x (xrefl cL A x)) H) y p). 
+
+def cubsymmetry : l : Lev -> A : T l -> u : eps l A -> v : eps l A -> p : tCubicalEq l A u v -> tCubicalEq l A v u
+:= l => A => u => v => p =>
+        xsymmetry l (c l A) (isoUp l A u) (isoUp l A v) p.
+
+
+
+
+(; ------ ------ Composition ------ ------- ;)
 
 
 def primCompTerm : l : Lev -> phi : ceps F -> A : (ceps I -> T l) -> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i))
@@ -679,6 +722,9 @@ def TermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> tau : (ceps (faceDataType
 [l, f1, f2, tau, A1, A2, coh, fdata2] TermSys l f1 f2 tau A1 A2 coh (Fmaxintro2 f1 f2 fdata2) --> A2 fdata2.
 
 
+
+
+
 (; TODO: Relou ... Faire un systeme ternaire pour les systeme a 3 branche  ;)
 
 def F3max := (f1 => f2 => f3 => Fmax (Fmax f1 f2) f3). 
@@ -688,30 +734,21 @@ def F3maxc2 := f1 => f2 => f3 => p : ceps (faceDataType f2) => Fmaxintro1 (Fmax 
 def F3maxc3 := f1 => f2 => f3 => p : ceps (faceDataType f3) => Fmaxintro2 (Fmax f1 f2) f3 p.
 
 
+
+
+
+
+
+
+
+
+
+
 (;
 
+(; Cste privée ou type prop a egal externe pres. ;)
 
-
-
-
-
-def TriTermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> f3 : ceps F -> tau : (ceps (faceDataType (F3max f1 f2 f3)) -> T l) ->
-                 A1 :  (p : ceps (faceDataType f1) -> eps l (tau (F3maxc1 f1 f2 f3 p))) ->
-                 A2 :  (p : ceps (faceDataType f2) -> eps l (tau (F3maxc2 f1 f2 f3 p))) ->
-		 A3 :  (p : ceps (faceDataType f3) -> eps l (tau (F3maxc3 f1 f2 f3 p))) ->
-                 coh12 :(e : ceps (faceDataType (F3min f1 f2 f3)) -> 
-                 	tCubicalEq l (tau (F3maxc1 f1 f2 f3 (f3p1 f1 f2 f2 e)))
-                        (A1 (fp1 f1 f2 e))
-                        (A2 (fp2 f1 f2 e))) ->
-		 coh23 :(e : ceps (faceDataType (F3min f1 f2 f3)) -> 
-                 	tCubicalEq l (tau (F3maxc1 f1 f2 f3 (f3p1 f1 f2 f3 e)))
-                        (A2 (fp1 f2 f3 e))
-                        (A3 (fp2 f2 f3 e))) ->
-		 e : ceps (faceDataType (F3max f1 f2 f3)) 
-		-> eps l (tau e).
-
-
-
+(; Faire had hock ;)
 
 def TriTermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> f3 : ceps F -> tau : (ceps (faceDataType (F3max f1 f2 f3)) -> T l) ->
                  A1 :  (p : ceps (faceDataType f1) -> eps l (tau (F3maxc1 f1 f2 f3 p))) ->
@@ -722,7 +759,7 @@ def TriTermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> f3 : ceps F -> tau : (
                         (A1 (fp1 f1 f2 e))
                         (A2 (fp2 f1 f2 e))) ->
 		 coh23 :(e : ceps (faceDataType (Fmin f2 f3)) -> 
-                 	tCubicalEq l (tau (F3maxc1 f1 f2 f3 (fp1 f2 f3 e)))
+                 	tCubicalEq l (tau (F3maxc2 f1 f2 f3 (fp1 f2 f3 e)))
                         (A2 (fp1 f2 f3 e))
                         (A3 (fp2 f2 f3 e))) ->
 		 coh13 :(e : ceps (faceDataType (Fmin f1 f3)) -> 
@@ -731,11 +768,12 @@ def TriTermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> f3 : ceps F -> tau : (
                         (A3 (fp2 f1 f3 e))) ->
 		 e : ceps (faceDataType (F3max f1 f2 f3)) 
 		-> eps l (tau e).
+
 ;)
 
 
 def xTermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> tau : (ceps (faceDataType (Fmax f1 f2)) -> xT l) ->
-                 A1 :  (p : ceps (faceDataType f1) -> xeps l (tau (Fmaxintro1 f1 f2 p))) ->
+                A1 :  (p : ceps (faceDataType f1) -> xeps l (tau (Fmaxintro1 f1 f2 p))) ->
                 A2 :  (p : ceps (faceDataType f2) -> xeps l (tau (Fmaxintro2 f1 f2 p))) ->
                 coh : (e : ceps (faceDataType (Fmin f1 f2)) -> 
                                 xtEq l (tau (Fmaxintro1 f1 f2 (fp1 f1 f2 e)))
@@ -749,33 +787,211 @@ def xTermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> tau : (ceps (faceDataTyp
 
 
 
-
-(; ------ ------ Utility ------ ------- ;)
-
-
-def cubRewr : l : Lev -> A : cT -> x : ceps A -> tau : (y : ceps A -> p : xtEq cL A x y -> T l) -> H : eps l (tau x (xrefl cL A x))
-                                -> y : ceps A -> p : xtEq cL A x y -> 
-                                eps l (tau y p)
-
-:=               l : Lev => A : cT => x : ceps A => tau : (y : ceps A -> p : xtEq cL A x y -> T l) => H : eps l (tau x (xrefl cL A x))
-                                => y : ceps A => p : xtEq cL A x y => 
-isoDown l (tau y p) (xJ cL l A x (y => q => c l (tau y q)) (isoUp l (tau x (xrefl cL A x)) H) y p). 
+def xeqtstau := (l => f1 => f2 => A => u => v => e : ceps (faceDataType (Fmax f1 f2)) => xEq l (A e) (u e) (v e)).
 
 
+def xEqTermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> 
+		A : (e : ceps (faceDataType (Fmax f1 f2)) -> xT l) ->
+		u : (e : ceps (faceDataType (Fmax f1 f2)) -> xeps l (A e)) ->
+		v : (e : ceps (faceDataType (Fmax f1 f2)) -> xeps l (A e)) ->
+		A1 :  (p : ceps (faceDataType f1) -> xeps l (xeqtstau l f1 f2 A u v (Fmaxintro1 f1 f2 p))) ->
+		A2 :  (p : ceps (faceDataType f2) -> xeps l (xeqtstau l f1 f2 A u v (Fmaxintro2 f1 f2 p))) ->
+                e : ceps (faceDataType (Fmax f1 f2)) ->
+xeps l (xeqtstau l f1 f2 A u v e)
+:=
+l => f1 => f2 => A => u => v => A1 => A2 => e =>
+xTermSys l f1 f2 (xeqtstau l f1 f2 A u v) A1 A2 (oninter => xUIP l (A (Fmaxintro1 f1 f2 (fp1 f1 f2 oninter)))
+(u (Fmaxintro1 f1 f2 (fp1 f1 f2 oninter)))
+(v (Fmaxintro1 f1 f2 (fp1 f1 f2 oninter)))
+(A1 (fp1 f1 f2 oninter))
+(A2 (fp2 f1 f2 oninter))
+)
+e.
+
+def CubEqTermSys := l => f1 => f2 => A => u => v => A1 => A2 => e =>
+	xEqTermSys l f1 f2 (e => c l (A e)) (e => isoUp l (A e) (u e)) (e => isoUp l (A e) (v e)) A1 A2 e.
 
 
-def xsymmetry : l : Lev -> A : xT l -> u : xeps l A -> v : xeps l A -> p : xtEq l A u v -> xtEq l A v u
-:= l : Lev => A : xT l => u : xeps l A => v : xeps l A => p : xtEq l A u v => 
-        xJ l l A u (v => _ => xEq l A v u) (xrefl l A u) v p.
 
-def xcomposition : l : Lev -> A : xT l -> u : xeps l A -> v : xeps l A -> w : xeps l A ->
-        p1 : xtEq l A u v -> p2 : xtEq l A v w ->
-        xtEq l A u w
-:= l : Lev => A : xT l => u : xeps l A => v : xeps l A => w : xeps l A => p1 : xtEq l A u v => p2 : xtEq l A v w =>
-        xJ l l A v (y => _ => xEq l A u y) p1 w p2.
+(;
+ xeps l (xEq l (xEq l (xeqtstau l f1 f2 A u v (Fmaxintro1 f1 f2 (fp1 f1 f2 oninter))) (u (Fmaxintro1 f1 f2 (fp1 f1 f2 oninter))) (v (Fmaxintro1 f1 f2 (fp1 f1 f2 oninter)))) (A1 (fp1 f1 f2 oninter)) (A2 (fp2 f1 f2 oninter)))
+ xeps l (xEq l (xeqtstau l f1 f2 A u v (Fmaxintro1 f1 f2 (fp1 f1 f2 oninter))) (A1 (fp1 f1 f2 oninter)) (A2 (fp2 f1 f2 oninter))).
 
 
+def xUIP : l : Lev -> A : xT l -> x : xeps l A -> y : xeps l A -> p : xtEq l A x y -> p' : xtEq l A x y ->
+        xtEq l (xEq l A x y) p p'.
 
+
+
+;)
+
+
+
+
+
+
+
+(; ---- Filling of faces ---- ;)
+
+def sys1 :=
+	l : Lev => 
+	phi : ceps F => 
+	A : (i : ceps I -> T l) =>
+	u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i)) => 
+	a0 : eps l (A 0) =>
+	proof : (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) =>
+	i : ceps I =>
+	onunion : ceps (faceDataType (Fmax  phi (eq0 i))) =>
+	j : ceps I => 
+(TermSys l phi (eq0 i) (_ => A (Imin i j))
+                        (p : ceps (faceDataType phi)      => u p (Imin i j))
+                        (p : ceps (faceDataType (eq0 i))  => cubRewr l I 0 (k => _ => A (Imin k j)) a0 i (faceDataTypeEq0Up i p))
+                        (e => xJ cL l I 0 
+                                (k => q => CubicalEq l (A (Imin k j)) (u (fp1 phi (eq0 i) e) (Imin k j)) (cubRewr l I 0 (m => _ => A (Imin m j)) a0 k q))
+                                (cubsymmetry l (A 0) a0 (u (fp1 phi (eq0 i) e) 0) (proof (fp1 phi (eq0 i) e)))
+				i (faceDataTypeEq0Up i (fp2 phi (eq0 i) e)))
+                         onunion).
+
+
+(;
+
+l : Lev -> phi : ceps F -> A : (ceps I -> T l) -> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i))
+        -> a0 : eps l (A 0) ->                 (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) -> i : ceps I ->
+	eps l (A 1)
+
+;)
+
+
+
+def cubUIP := l : Lev => A : T l => x : eps l A => y : eps l A => p : tCubicalEq l A x y => p' : tCubicalEq l A x y =>
+        xUIP l (c l A) (isoUp l A x) (isoUp l A y) p p'.
+
+
+
+
+def fill :
+
+l : Lev -> phi : ceps F -> A : (ceps I -> T l) ->
+u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i)) -> a0 : eps l (A 0) -> 
+proof : (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) -> i : ceps I ->
+eps l (A i)
+
+:= l : Lev => phi : ceps F => A : (i : ceps I -> T l)
+=> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i)) => a0 : eps l (A 0) =>
+proof : (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) => i : ceps I =>
+primCompTerm l (Fmax  phi (eq0 i)) (j : ceps I => A (Imin i j))
+        (onunion : ceps (faceDataType (Fmax  phi (eq0 i))) => j : ceps I => sys1 l phi A u a0 proof i onunion j)
+	 a0
+	(onunion : ceps (faceDataType (Fmax  phi (eq0 i))) => CubEqTermSys l phi (eq0 i)
+		(_ => A 0)
+		(_ => a0)
+		(e => sys1 l phi A u a0 proof i e 0)
+		(p => proof p)
+		(p => xJ cL l I 0 (i => q => CubicalEq l (A 0) a0 (cubRewr l I 0 (k => _ => A 0) a0 i q)) (cubrefl l (A 0) a0) i (faceDataTypeEq0Up i p))
+		 onunion).
+
+
+
+
+(;
+
+def primCompTerm : l : Lev -> phi : ceps F -> A : (ceps I -> T l) -> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i))
+        -> a0 : eps l (A 0) ->                 (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0))
+        -> eps l (A 1).
+
+
+def xEqTermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> 
+		A : (e : ceps (faceDataType (Fmax f1 f2)) -> xT l) ->
+		u : (e : ceps (faceDataType (Fmax f1 f2)) -> xeps l (A e)) ->
+		v : (e : ceps (faceDataType (Fmax f1 f2)) -> xeps l (A e)) ->
+		A1 :  (p : ceps (faceDataType f1) -> xeps l (xeqtstau l f1 f2 A u v (Fmaxintro1 f1 f2 p))) ->
+		A2 :  (p : ceps (faceDataType f2) -> xeps l (xeqtstau l f1 f2 A u v (Fmaxintro2 f1 f2 p))) ->
+                e : ceps (faceDataType (Fmax f1 f2)) ->
+xeps l (xeqtstau l f1 f2 A u v e)
+:=
+l => f1 => f2 => A => u => v => A1 => A2 => e =>
+xTermSys l f1 f2 (xeqtstau l f1 f2 A u v) A1 A2 (oninter => xUIP l (A (Fmaxintro1 f1 f2 (fp1 f1 f2 oninter)))
+(u (Fmaxintro1 f1 f2 (fp1 f1 f2 oninter)))
+(v (Fmaxintro1 f1 f2 (fp1 f1 f2 oninter)))
+(A1 (fp1 f1 f2 oninter))
+(A2 (fp2 f1 f2 oninter))
+)
+e.
+
+def CubEqTermSys := l => f1 => f2 => A => u => v => A1 => A2 => e =>
+	xEqTermSys l f1 f2 (e => c l (A e)) (e => isoUp l (A e) (u e)) (e => isoUp l (A e) (v e)) A1 A2 e.
+
+
+xeps l (xEq l (c l (A 0)) (
+	isoUp l (A 0) a0) 
+	(isoUp l (A 0) (isoDown l ((λk _, A 0) i 
+	(faceDataTypeEq0Up i (xp2 cL (faceDataType phi) (λ_, faceDataType (eq0 i)) (faceDataTypeFminUp phi (eq0 i) e)))) (xJ cL l I 0 (λy0 q, c l ((λk _, A 0) y0 q)) (isoUp l ((λk _, A 0) 0 (xrefl cL I 0)) a0) i (faceDataTypeEq0Up i (xp2 cL (faceDataType phi) (λ_, faceDataType (eq0 i)) (faceDataTypeFminUp phi (eq0 i) e)))))))
+
+xeps l (xEq l (c l (A 0)) 
+	(isoUp l (A 0) a0) 
+	(isoUp l (A 0) (u (fp1 phi (eq0 i) e) 0))
+
+
+
+
+
+
+
+
+
+def fill 
+
+:= l : Lev => phi : ceps F => A : (i : ceps I -> T l)
+=> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i)) => a0 : eps l (A 0) =>
+proof : (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) => i : ceps I => todo2 =>
+primCompTerm l (Fmax  phi (eq0 i)) (j : ceps I => A (Imin i j))
+        (onunion : ceps (faceDataType (Fmax  phi (eq0 i))) => j : ceps I => sys1 l phi A u a0 proof i onunion j)
+	 a0
+	(onunion : ceps (faceDataType (Fmax  phi (eq0 i))) => xTermSys l phi (eq0 i) (e => CubicalEq l (A 0) a0 (sys1 l phi A u a0 proof i e 0))
+		(p : ceps (faceDataType phi)     => proof p)
+		(p : ceps (faceDataType (eq0 i)) => xJ cL l I 0 (i => q => CubicalEq l (A 0) a0 (cubRewr l I 0 (k => _ => A 0) a0 i q)) (cubrefl l (A 0) a0) i (faceDataTypeEq0Up i p))
+		(e => cubUIP l (A 0) a0 (u (fp1 phi (eq0 i) e) 0)
+			(proof (fp1 phi (eq0 i) e))
+			(xJ cL l I 0 (i => q => CubicalEq l (A 0) a0 (cubRewr l I 0 (k => _ => A 0) a0 i q)) (cubrefl l (A 0) a0) i (faceDataTypeEq0Up i (fp2 phi (eq0 i) e))))
+		onunion).
+
+
+def fill 
+
+:= l : Lev => phi : ceps F => A : (i : ceps I -> T l)
+=> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i)) => a0 : eps l (A 0) =>
+proof : (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) => i : ceps I => todo2 =>
+primCompTerm l (Fmax  phi (eq0 i)) (j : ceps I => A (Imin i j))
+        (onunion : ceps (faceDataType (Fmax  phi (eq0 i))) => j : ceps I => sys1 l phi A u a0 proof i onunion j)
+	 a0
+	(onunion : ceps (faceDataType (Fmax  phi (eq0 i))) => xTermSys l phi (eq0 i) (e => CubicalEq l (A 0) a0 (sys1 l phi A u a0 proof i e 0))
+		(p : ceps (faceDataType phi)     => proof p)
+		(p : ceps (faceDataType (eq0 i)) => xJ cL l I 0 (i => q => CubicalEq l (A 0) a0 (cubRewr l I 0 (k => _ => A 0) a0 i q)) (cubrefl l (A 0) a0) i (faceDataTypeEq0Up i p))
+		(e => cubUIP l (A 0) a0 (u (fp1 phi (eq0 i) e) 0)
+			(proof (fp1 phi (eq0 i) e))
+			(xJ cL l I 0 (i => q => CubicalEq l (A 0) a0 (cubRewr l I 0 (k => _ => A 0) a0 i q)) (cubrefl l (A 0) a0) i (faceDataTypeEq0Up i (fp2 phi (eq0 i) e))))
+		onunion).
+
+
+def xUIP : l : Lev -> A : xT l -> x : xeps l A -> y : xeps l A -> p : xtEq l A x y -> p' : xtEq l A x y ->
+        xtEq l (xEq l A x y) p p'.
+
+
+
+def xTermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> tau : (ceps (faceDataType (Fmax f1 f2)) -> xT l) ->
+                 A1 :  (p : ceps (faceDataType f1) -> xeps l (tau (Fmaxintro1 f1 f2 p))) ->
+                A2 :  (p : ceps (faceDataType f2) -> xeps l (tau (Fmaxintro2 f1 f2 p))) ->
+                coh : (e : ceps (faceDataType (Fmin f1 f2)) -> 
+                                xtEq l (tau (Fmaxintro1 f1 f2 (fp1 f1 f2 e)))
+                                        (A1 (fp1 f1 f2 e))
+                                        (A2 (fp2 f1 f2 e))) ->
+                e : ceps (faceDataType (Fmax f1 f2)) 
+
+;)
+
+
+
+(; FAIRE 4.5, puis faire 4.5 natural avec fill ;)
 
 
 (; --- --- --- ---    Rules of primComp --- ;)
@@ -800,107 +1016,93 @@ def extractNat : l : Lev -> n : tNat l -> m : tNat l -> tCubicalEq l (Nat l) (S 
 
 
 
-def fill
-:= l : Lev => phi : ceps F => A : (i : ceps I -> T l)
-=> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i)) => a0 : eps l (A 0) =>
-proof : (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) => i : ceps I =>
-primCompTerm l (Fmax  phi (eq0 i)) (j : ceps I => A (Imin i j))
-        (onunion : ceps (faceDataType (Fmax  phi (eq0 i))) => j : ceps I => 
-                TermSys l phi (eq0 i) (_ => A (Imin i j))
-                        (p : ceps (faceDataType phi)      => u p (Imin i j))
-                        (p : ceps (faceDataType (eq0 i))  => cubRewr l I 0 (k => _ => A (Imin k j)) a0 i (faceDataTypeEq0Up i p))
-                        (e => xJ cL l I 0 
-                                (k => q => CubicalEq l (A (Imin k j)) (u (fp1 phi (eq0 i) e) (Imin k j)) (cubRewr l I 0 (m => _ => A (Imin m j)) a0 k q))
-                                (xsymmetry l (A 0) a0 (u e 0) (proof (fp1 phi (eq0 i) e)))
-				i (faceDataTypeEq0Up i (fp2 phi (eq0 i) e)))
-                         onunion).
+(; --- For Sums ;)
 
+coh1 : l : Lev -> A : T l -> B : (x : eps l A -> T l) -> u : (tSig l A B) -> v : (tSig l A B) -> 
+	tCubicalEq l (Sig l A B) u v -> 
+	tCubicalEq l A (p1 l A B u) (p1 l A B v).
 
 
 (;
 
-tCubicalEq l (A (Imin 0 j)) (u (fp1 phi (eq0 i) e) (Imin 0 j)) (cubRewr l I 0 (m => _ => A (Imin m j)) a0 0 refl)
-tCubicalEq l (A 0) (u (fp1 phi (eq0 i) e) 0) a0
+
+[l, phi, coh, A, B] primCompTerm l phi (Sig l A B) w w0 coh --> pair l A B
+	(primComp l phi A      (e => j => p1 l A B (w e j)) (p1 l A B w0)
+		(e => (coh1 l A B u v (coh e)))
+	(primComp l phi (B (fill l phi A (e => j => p1 l A B (w e j)) (p1 l A B w0) (e => (coh1 l A B u v (coh e))) 1))
+		(e => j => p2 l A B (w e j)) (p2 l A B w0) coh2).
 
 
-
-CubicalEq l (A (Imin i j)) (u (fp1 phi (eq0 i) e) (Imin i j)) (cubRewr l I 0 (m => _ => A (Imin m j)) a0 i (faceDataTypeEq0Up i (fp2 phi (eq0 i) e)))
-
-
-
-def xJ : i : Lev -> j : Lev -> A : xT i -> x : xeps i A -> tau : (y : xeps i A -> p : xtEq i A x y -> xT j)
-        -> H : xeps j (tau x (xrefl i A x))
-        -> y : xeps i A -> p : xtEq i A x y -> xeps j (tau y p).
-
-
-def TermSys : l : Lev -> f1 : ceps F -> f2 : ceps F -> tau : (ceps (faceDataType (Fmax f1 f2)) -> T l) ->
-                 A1 :  (p : ceps (faceDataType f1) -> eps l (tau (Fmaxintro1 f1 f2 p))) ->
-                A2 :  (p : ceps (faceDataType f2) -> eps l (tau (Fmaxintro2 f1 f2 p))) ->
-                coh : (e : ceps (faceDataType (Fmin f1 f2)) -> 
-                                tCubicalEq l (tau (Fmaxintro1 f1 f2 (fp1 f1 f2 e)))
-                                        (A1 (fp1 f1 f2 e))
-                                        (A2 (fp2 f1 f2 e))) ->
-                e : ceps (faceDataType (Fmax f1 f2)) 
--> eps l (tau e).
 
 
 def primCompTerm : l : Lev -> phi : ceps F -> A : (ceps I -> T l) -> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i))
         -> a0 : eps l (A 0) ->                 (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0))
         -> eps l (A 1).
-
-
-def fill
-:= l : Lev => phi : ceps F => A : (i : ceps I -> T l)
-=> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i)) => a0 : eps l (A 0) =>
-proof : (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) => i : ceps I =>
-primCompTerm l (Fmax  phi (eq0 i)) (j : ceps I => A (Imin i j))
-        (onunion : ceps (faceDataType (Fmax  phi (eq0 i))) => j : ceps I => 
-                TermSys l phi (eq0 i) (_ => A (Imin i j))
-                        (p : ceps (faceDataType phi)      => u p (Imin i j))
-                        (p : ceps (faceDataType (eq0 i))  => cubRewr l I 0 (k => _ => A (Imin k j)) a0 i (faceDataTypeEq0Up i p))
-                        (e => xJ cL l I 0 
-                                (k => q => CubicalEq l (A (Imin k j)) (u (fp1 phi (eq0 i) e) (Imin k j)) (cubRewr l I 0 (m => _ => A (Imin m j)) a0 k q))
-                                (xsymmetry l (A 0) a0 (u e 0) (proof (fp1 phi (eq0 i) e)))
-				i (faceDataTypeEq0Up i (fp2 phi (eq0 i) e)))
-                         onunion).
-(cubical eq changed)
-
-
-def fill
-:= l : Lev => phi : ceps F => A : (i : ceps I -> T l)
-=> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i)) => a0 : eps l (A 0) =>
-proof : (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) => i : ceps I =>
-primCompTerm l (Fmax  phi (eq0 i)) (j : ceps I => A (Imin i j))
-        (onunion : ceps (faceDataType (Fmax  phi (eq0 i))) => j : ceps I => 
-                TermSys l phi (eq0 i) (_ => A (Imin i j))
-                        (p : ceps (faceDataType phi)      => u p (Imin i j))
-                        (p : ceps (faceDataType (eq0 i))  => cubRewr l I 0 (k => _ => A (Imin k j)) a0 i (faceDataTypeEq0Up i p))
-                        (e => xJ cL l I 0 
-                                (k => q => tCubicalEq l (A (Imin k j)) (u (fp1 phi (eq0 i) e) (Imin k j)) (cubRewr l I 0 (m => _ => A (Imin m j)) a0 k q))
-                                (xsymmetry l (A 0) a0 (u e 0) (proof (fp1 phi (eq0 i) e)))
-				i (faceDataTypeEq0Up i (fp2 phi (eq0 i) e)))
-                         onunion).
-
-
-
 ;)
 
 (;
-l : Lev -> phi : ceps F -> A : (i : ceps I -> T l) -> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i))
--> a0 : eps l (A 0) -> i : ceps I -> z -> coh -> eps l (A i)
+
+
+
+
+
+
+
+                
+(;--   TODO: pROUVER FILL  0 =  ... egalite externe  ---;)
+
+
+Faire a c1 c2 explicitement....
+                
+                ------------ GROS PB CONFLUENCE SYSTEME ??? Ah non en fait
+                
+                
+coh1 : l : Lev -> A : T l -> B : (x : eps l A -> T l) -> u : (tSig l A B) -> v : (tSig l A B) -> 
+        tCubicalEq l (Sig l A B) u v -> 
+        tCubicalEq l A (p1 l A B u) (p1 l A B v).
+        
+        
+        Ajouter i pour mettre (A i)
+        
+[l, phi, coh, A, B] primCompTerm l phi (Sig l A B) w w0 coh --> pair l A B
+        (primComp l phi A      (e => j => p1 l A B (w e j)) (p1 l A B w0)
+                (e => (coh1 l A B u v (coh e)))          C1111111111111111111111111
+        (primComp l phi (B (fill l phi A (e => j => p1 l A B (w e j)) (p1 l A B w0) (e => (coh1 l A B u v (coh e)))     i   ))
+                (e => j => p2 l A B (w e j)) (p2 l A B w0) coh2). C222222222222222222
+
+
+
+l : Lev -> phi : ceps F -> A : (ceps I -> T l) -> u : (ceps (faceDataType phi) -> i : ceps I -> eps l (A i))
+        -> a0 : eps l (A 0) ->                 (e : ceps (faceDataType phi) -> tCubicalEq l (A 0) a0 (u e 0)) -> i : ceps I ->
+	eps l (A 1)
+
+Pi : i : Lev -> A : T i -> (eps i A -> T i) -> T i.
+def tPi := (i : Lev => A : T i => B : (eps i A -> T i) => eps i (Pi i A B)).
+
+[i, A, B] eps i (Pi i A B) --> x : eps i A -> eps i (B x).
+def ndPi  := i : Lev => A : T i => B : T i => Pi i A (_ => B).
+def tndPi := l : Lev => A : T l => B : T l => (eps l (ndPi l A B)).
+
+
+Sig : i : Lev -> A : T i -> (eps i A -> T i) -> T i.
+def tSig := (i : Lev => A : T i => B : (eps i A -> T i) => eps i (Sig i A B)).
+
+def pair : i : Lev -> A : T i -> B : (eps i A -> T i) -> a : eps i A -> b : eps i (B a) -> tSig i A B.
+def p1 : i : Lev -> A : T i -> B : (eps i A -> T i) ->            tSig i A B -> eps i A.
+def p2 : i : Lev -> A : T i -> B : (eps i A -> T i) -> p : tSig i A B -> eps i (B (p1 i A B p)).
+
+[i, A, B, a, b] p1 i A B (pair i A B a b) --> a.
+[i, A, B, a, b] p2 i A B (pair i A B a b) --> b.
+[i, A, B, e] (pair i A B (p1 i A B e) (p2 i A B e)) --> e.
+
+
 ;)
 
 
 
 
 
-(; FAIRE 4.5, puis faire 4.5 natural avec fill ;)
 
-
-
-
-
-(; ---- Filling of faces ---- ;)
 
 
 
